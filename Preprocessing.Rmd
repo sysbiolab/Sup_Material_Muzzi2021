@@ -13,24 +13,7 @@ papersize: a4
 # Data preprocessing
 First, we will use TCGABiolinks package to query and download clinical and mRNA-Seq data for TCGA-ACC samples. We will save these information on a SummarizedExperiment R object, where gene names and expression values as well as clinical data for each patient are stored. Then the clinical data will be merged with Sturm et al. (2019) and Thorsson et al. (2018) data sets for TCGA-ACC samples.
 
-# Packages installation and loading
-```{r packages-installation}
-# Packages Installation
-## Find out if packages are already installed, if not proceed with installation
-### R packages in CRAN repository
-Rpackages <- c("tidyverse","stringr","scales","igraph")
-Rpackages.new <- Rpackages[!(Rpackages %in% installed.packages()[,"Package"])]
-if(length(Rpackages.new)) install.packages(Rpackages.new)
-### R packages in BioConductor
-Rpackages <- c("TCGAbiolinks","SummarizedExperiment","AnnotationHub")
-Rpackages.new <- Rpackages[!(Rpackages %in% installed.packages()[,"Package"])]
-if(length(Rpackages.new)){
-  if (!requireNamespace("BiocManager", quietly = TRUE))
-  install.packages("BiocManager")
-  BiocManager::install(Rpackages.new)
-}
-```
-
+# Packages installation
 ```{r libraries, message=F, warning=F}
 # Libraries used
 ## For GDC Data Portal ACC RNAseq import and data manipulation
