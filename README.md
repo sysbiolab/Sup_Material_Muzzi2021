@@ -1932,9 +1932,3 @@ tab$grobs[124][[1]][["gp"]] <- gpar(fill="grey77", lwd=0, col="grey77")
 
 plot_grid(tab)
 ```
-
-R session
-----
-```{r session-info}
-sessionInfo()
-```
