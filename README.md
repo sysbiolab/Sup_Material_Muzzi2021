@@ -1,4 +1,4 @@
-Script for data analysis
+Supporting Material for Muzzi2021
 ================
 João C. D. Muzzi, Mauro A. A. Castro <br>
 
