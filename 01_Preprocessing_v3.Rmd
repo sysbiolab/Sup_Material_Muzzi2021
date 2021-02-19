@@ -1,0 +1,339 @@
+---
+title: "**Script for data sets import and pre-process**"
+author: "João C. D. Muzzi, Juliana F. de Moura, Mauro A. A. Castro, Bonald C. Figueiredo"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+geometry: margin=1.5cm
+papersize: a4
+---
+
+# Data preprocessing
+First, we will use TCGABiolinks package to query and download clinical and mRNA-Seq data for TCGA-ACC samples. We will save these information on a SummarizedExperiment R object, where gene names and expression values as well as clinical data for each patient are stored. Then the clinical data will be merged with Sturm et al. (2019) and Thorsson et al. (2018) data sets for TCGA-ACC samples.
+
+# Packages installation and loading
+```{r packages-installation}
+# Packages Installation
+## Find out if packages are already installed, if not proceed with installation
+### R packages in CRAN repository
+Rpackages <- c("tidyverse","stringr","scales","igraph")
+Rpackages.new <- Rpackages[!(Rpackages %in% installed.packages()[,"Package"])]
+if(length(Rpackages.new)) install.packages(Rpackages.new)
+### R packages in BioConductor
+Rpackages <- c("TCGAbiolinks","SummarizedExperiment","AnnotationHub")
+Rpackages.new <- Rpackages[!(Rpackages %in% installed.packages()[,"Package"])]
+if(length(Rpackages.new)){
+  if (!requireNamespace("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+  BiocManager::install(Rpackages.new)
+}
+```
+
+```{r libraries, message=F, warning=F}
+# Libraries used
+## For GDC Data Portal ACC RNAseq import and data manipulation
+library(TCGAbiolinks)
+library(SummarizedExperiment)
+## For filtering protein coding genes
+library(AnnotationHub)
+## Data manipulation
+library(tidyverse)
+library(stringr)
+library(scales)
+## Network reconstruction
+library(igraph)
+
+```
+
+# GDC Data Portal download with TCGAbiolinks and preprocessing
+```{r tcga-download, message=F, warning=F, results=F}
+# Download TCGA-ACC cohort data (clinical and RNA-seq) from GDC Portal
+query <- GDCquery(project = "TCGA-ACC", 
+                  data.category = "Transcriptome Profiling",
+                  data.type = "Gene Expression Quantification", 
+                  workflow.type = "HTSeq - Counts",
+                  sample.type = c("Primary Tumor"))
+
+GDCdownload(query)
+# Setting as SummarizedExperiment object 
+tcgaACC <- GDCprepare(query, summarizedExperiment = TRUE) # 56457 genes
+
+# Starting to add information to samples
+# => Add clinical information to samples
+# => Adding TCGA molecular information from marker papers
+# => Information will have prefix 'paper_' 
+# acc subtype information from:doi:10.1016/j.ccell.2016.04.002
+# From the 60483 genes we couldn't map 3881
+
+######################################################### Beginning - Prof Mauro Castro script
+##--- Set a 'rowAnnotation' data frame for gene annotation 
+
+ah <- AnnotationHub()
+query(ah, "EnsDb")
+edb <- query(ah, pattern = c("Homo sapiens", "EnsDb", 101))[[1]]
+gns <- genes(edb)
+gns$length <- width(gns)
+rowAnnotation <- as.data.frame(gns)
+rowAnnotation <- rowAnnotation[,c("seqnames","start","end","width",
+                                  "strand","gene_id","gene_name","gene_biotype",
+                                  "symbol","entrezid","length")] #67990 genes
+######################################################## End - Prof Mauro Castro script
+```
+
+
+```{r tcgaACC-mRNA-Seq-Data, results=F, warning=F, message=F}
+# Filter 'rowAnnotation' for protein coding genes
+rowAnnotation <- dplyr::filter(rowAnnotation, 
+                               gene_biotype == "protein_coding")# 22791 genes
+# Subset gene expression matrix from SummarizedExperiment object
+# for protein coding genes in 'rowAnnotation'
+tcgaACC <- subset(tcgaACC, 
+                  rownames(tcgaACC) %in% rownames(rowAnnotation)) #19565 genes
+# Find duplicated entries
+anyDuplicated(rownames(tcgaACC)) # 0
+
+## Select patients with molecular classification on Steroid Phenotype
+tcgaACC <- subset(tcgaACC, 
+                  select = complete.cases(colData(tcgaACC)$paper_mRNA_K4)) 
+# From 79 to 78 patients
+
+rm(ah,edb,gns,query,rowAnnotation)
+
+# Removing zero counts genes
+tcgaACC <- tcgaACC[rowSums(assay(tcgaACC))>0,] #19174 genes
+
+# Separating mRNA K4 classification into Steroid Phenotype (High or Low)
+# and Proliferation (yes or no)   
+colData(tcgaACC)$Steroid <- 
+  as.factor(if_else(colData(tcgaACC)$paper_mRNA_K4=="steroid-phenotype-low " |
+                      colData(tcgaACC)$paper_mRNA_K4=="steroid-phenotype-low+proliferation",
+                    "Steroid_Low",
+                    "Steroid_High"))
+colData(tcgaACC)$Proliferation_mRNA <- 
+  as.factor(if_else(colData(tcgaACC)$paper_mRNA_K4=="steroid-phenotype-high+proliferation" |  
+                      colData(tcgaACC)$paper_mRNA_K4=="steroid-phenotype-low+proliferation",
+                    "Proliferation_High",
+                    "Proliferation_Low"))
+colData(tcgaACC)[,c("tumor_stage", "Steroid","Proliferation_mRNA","vital_status")] <-
+  lapply(colData(tcgaACC)[,c("tumor_stage", "Steroid","Proliferation_mRNA","vital_status")],
+         as.factor)
+```
+
+# Download Thorsson and Sturm data sets and additional clinical data
+```{r data_prep_Thorsson_Sturm, message=F, warning=F}
+# Extract clinical data from SummarizedExperiment object 
+clinic.dat <- data.frame(colData(tcgaACC))
+
+# Importing clinical information on hormones excess from:
+# "https://api.gdc.cancer.gov/data/a854b659-f0f8-4966-bdc2-279e714983bb/"
+repo_link <- "https://api.gdc.cancer.gov/data/"
+name.file <- "a854b659-f0f8-4966-bdc2-279e714983bb/"
+download.file(
+  url = paste0(repo_link,name.file),
+  destfile = "clinic_hormone.txt")
+clinic <- 
+  read.delim(
+    file= "clinic_hormone.txt",
+    header = T, 
+    sep = "\t")
+## Filtering for ACC patients barcode
+clinic <- clinic[clinic$bcr_patient_barcode %in% clinic.dat$patient,]
+
+## Separating Hormone Excess history in Cortisol and Others
+### Retrieve Cortisol excess information for each patient
+clinic$Cortisol <- 
+  ifelse(grepl("Cortisol",
+               clinic$excess_adrenal_hormone_history_type),
+         "Cortisol",
+         "No")
+clinic$Cortisol <-
+  ifelse(is.na(clinic$excess_adrenal_hormone_history_type),
+         NA,
+         clinic$Cortisol)
+clinic$Cortisol <- as.factor(clinic$Cortisol)
+### Retrieve Other hormones excess for each patient
+clinic$Other.Hormones <- 
+  ifelse(grepl("Mineral", 
+               clinic$excess_adrenal_hormone_history_type),
+         "Mineralcorticoids",
+         ifelse(grepl(paste0("Androgen","|","Estrogen"),
+                      clinic$excess_adrenal_hormone_history_type),
+                "Sexual",
+                 "No"))
+clinic$Other.Hormones <-
+  ifelse(is.na(clinic$excess_adrenal_hormone_history_type),
+         NA, 
+         clinic$Other.Hormones)
+clinic$Other.Hormones <- as.factor(clinic$Other.Hormones)
+
+###### Thorsson et al. (2018) data-sets for TCGA samples
+# Download Immune Features and Cibersort scores from Thorsson et al 2018
+repo_link <- "https://www.cell.com/cms/10.1016/j.immuni.2018.03.023/attachment/"
+name.file <- "1b63d4bc-af31-4a23-99bb-7ca23c7b4e0a/mmc2.xlsx"
+download.file(
+  url= paste0(repo_link,name.file),
+  destfile = "thorsson2018.xlsx")
+thorsson_pan <- 
+  data.frame(readxl::read_xlsx(
+    path= "thorsson2018.xlsx",
+    col_types = c(rep("text",4),
+                  rep("numeric",60))))
+
+## Select patients with Leukocyte Fraction information
+thorsson_pan <- thorsson_pan[complete.cases(thorsson_pan$Leukocyte.Fraction),]
+## Filter for TCGA-ACC cohort and merge with clinical information
+thorsson_ACC <- subset(thorsson_pan,
+                   thorsson_pan$TCGA.Participant.Barcode %in% clinic.dat$patient)
+thorsson_ACC <- thorsson_ACC[order(thorsson_ACC$TCGA.Participant.Barcode),]
+thorsson_ACC$Immune.Subtype <- factor(thorsson_ACC$Immune.Subtype,
+                                  levels = c("C1","C2","C3","C4","C5","C6"))
+
+# Download infiltration estimation for TCGA samples (Sturm et al., 2019)
+download.file(url = "http://timer.cistrome.org/infiltration_estimation_for_tcga.csv.gz",
+              destfile = "sturm2019.csv.gz")
+sturm_pan <- 
+  read.delim(
+    gzfile("sturm2019.csv.gz"),
+    header = T, 
+    sep = ",")
+sturm_pan[,1] <- gsub("-01","",sturm_pan[,1])
+names(sturm_pan)[1] <- "patient_XCELL"
+## Selecting xCell scores
+sturm_pan <- dplyr::select(sturm_pan,
+                           contains(c("patient", "XCELL")))
+## Filter for TCGA-ACC cohort and merge with clinical information
+sturm_ACC <- subset(sturm_pan,
+                sturm_pan[,1] %in% clinic.dat$patient)
+## Ordering columns of xCell scores by names 
+## and separating cells from Immune, Microenv. and Stroma scores
+cols <- c(names(sturm_ACC[,2:37])[order(names(sturm_ACC[,2:37]))], names(sturm_ACC[38:40]))
+## Merge data-sets for TCGA ACC cohort
+tab <- cbind(clinic.dat[order(clinic.dat$patient), "barcode", drop=F],
+             clinic[,c("bcr_patient_barcode","Cortisol","Other.Hormones")],
+             thorsson_ACC[,1:36],
+             thorsson_ACC[,c(37:58)]*thorsson_ACC$Leukocyte.Fraction,
+             thorsson_ACC[,59:64],
+             sturm_ACC[,c("patient_XCELL", cols)])
+tab <- tab[colnames(tcgaACC),]
+colData(tcgaACC) <- 
+  cbind(colData(tcgaACC)[,c("patient","age_at_index","gender", "tumor_stage",
+                            "vital_status","Steroid", "Proliferation_mRNA",
+                            "paper_C1A.C1B", "paper_MethyLevel", "paper_Histology")],
+        tab)
+save(tcgaACC,file = "tcgaACC_pre_processed.RData")
+#writexl::write_xlsx(tab, path="/home/muzzi/ACC/ACC_Immune_Scores.xlsx")
+
+```
+
+# Using Extracellular network data from CRI Atlas to reconstruct network
+```{r iAtlas-extracellular-network, message=F, fig.align="center", fig.cap="iAtlas Extracellular Communication Network", warning=F, results=F, fig.show="hold"}
+##### iAtlas (Thorsson et al 2018) Extracellular communication network reconstruction
+##### Importing data from CRI Atlas for TCGA ACC C3 and C4 patients
+##### Abundance > 50% and Concordance > 2.5
+##### https://isb-cgc.shinyapps.io/shiny-iatlas/ Extracellular Networks
+
+# Network nodes for Abundance > 0.5
+download.file(url = "https://github.com/sysbiolab/Sup_Material_Muzzi2021/blob/main/extracellular_network%20_nodes.csv", destfile = "extracellular_network_nodes.csv")
+nodes <- 
+  read_csv(
+    "extracellular_network _nodes.csv", 
+    col_types = cols(Abundance = col_number()))
+nodes$Type <- as.factor(nodes$Type) # type= cell, ligand or receptor
+nodes$Group <- as.factor(nodes$Group) # C3 or C4
+## Extracting ligands and receptor from Network for further analysis
+nodes_genes <- dplyr::filter(nodes,
+                             nodes$Type != "Cell")
+nodes_genes <- distinct(nodes_genes, Node, .keep_all = T) 
+
+# Network edges for concordance > 2.5
+download.file(url = "https://github.com/sysbiolab/Sup_Material_Muzzi2021/blob/main/extracellular_network_edges.csv", destfile = "extracellular_network_edges.csv")
+edges <- 
+  read_csv(
+    "extracellular_network_edges.csv", 
+    col_types = cols(Concordance = col_number()))
+edges$Group<- as.factor(edges$Group) # C3 or C4
+# Selecting only friendly names
+nodes<- nodes[,-1]
+edges<- edges[,-c(1,3)]
+
+######### C3 Network
+nodesC3 <- nodes[nodes$Group=="C3",]
+edgesC3 <- edges[edges$Group=="C3",]
+
+redeC3 <- graph_from_data_frame(d=edgesC3,
+                                directed = T,
+                                vertices = nodesC3)
+
+########## C4 network
+nodesC4 <- nodes[nodes$Group=="C4",]
+edgesC4 <- edges[edges$Group=="C4",]
+
+redeC4 <- graph_from_data_frame(d=edgesC4,
+                                directed = T,
+                                vertices = nodesC4)
+
+# Saving networks for reconstruction in RedeR
+networks <- list(redeC3=redeC3,
+                 redeC4=redeC4)
+save(networks, file= "networks.RData")
+```
+
+# Nodes gene expression with Batch corrected and normalized Pan-cancer mRNA-seq data from Hoadley et al. (2018)
+```{r heatmap-network-dat-prep, warning=F, results=F}
+###############################################################################
+### Pan-cancer gene expression of network nodes
+###############################################################################
+# Heatmap of Network nodes expression
+## Retrieve gene names for network nodes
+gdc <- c("TCGA", nodes_genes$Node)
+
+# Exporting gene names as tsv file for filtering whole gene exp matrix
+write.table(gdc,
+            file="/home/muzzi/gdc_genes_filt_symbol.tsv",
+            quote = FALSE, 
+            row.names = F,
+            col.names = F) 
+```
+
+
+```{bash heatmap-network-pancan-exp-filtering}
+# Download TCGA Pan cancer, batch corrected and normalized gene expression
+# from Hoadley et al. (2018) supplemental data
+wget https://api.gdc.cancer.gov/data/9a4679c3-855d-4055-8be9-3577ce10f66e \ 
+-o "RNASeqV2-geneExp-xena.tsv"
+# Filtering for 25 nodes gene expression in pan-cancer gene expression matrix
+grep -Fwf gdc_genes_filt_symbol.tsv 'RNASeqV2-geneExp-xena.tsv' > 'pancan-rna.tsv'
+```
+
+
+```{r pancan-data-prep, warning=F} 
+# Data preparation for Network Heatmap
+## Importing 24 nodes gene expression matrix for 11,000 TCGA samples
+pancan <- read.table(file = "pancan-rna.tsv")
+## Rearranging data.frame
+pancan <- data.frame(t(pancan))
+names(pancan) <- pancan[1,]
+pancan <- pancan[-1,]
+## Filtering for Primary Tumor samples
+pancan <- pancan[grepl("-01$",pancan$sample),]
+## Removing duplicated barcodes
+pancan <- distinct(pancan, sample, .keep_all = T) #removed 3 duplicated barcodes
+## Removing 3 last numbers from Barcodes to merge with Thorsson et al (2018) data set
+pancan$sample <- substr(pancan$sample, 1, nchar(pancan$sample)-3)
+pancan <- pancan[pancan$sample %in% thorsson_pan$TCGA.Participant.Barcode,] #9361 rows
+rownames(pancan) <- pancan[,1]
+## Expression values recognized as characters, changing to numberic
+pancan[,2:26] <- lapply(pancan[,2:26], 
+                        as.numeric)
+```
+
+```{r pancan-data, warning=F}
+### Saving Pan-cancer preprocessed data
+Pancan_data <- list(thorsson_pan=thorsson_pan,
+                    sturm_pan=sturm_pan,
+                    gen_exp_pan=pancan)
+save(Pancan_data, file = "Pancan_data.RData")
+```
+
