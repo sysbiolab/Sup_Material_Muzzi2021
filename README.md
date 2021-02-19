@@ -1,6 +1,6 @@
 Supporting Material for Muzzi2021
 ================
-João C. D. Muzzi, Mauro A. A. Castro <br>
+João C. D. Muzzi, Juliana F. de Moura, Mauro A. A. Castro, Jessica M. Magno, Milena A. Cardoso, Bonald C. Figueiredo. <br>
 
 19 February 2021.
 
@@ -10,7 +10,7 @@ Context
 Despite progress in understanding the biology of adrenocortical carcinoma (ACC), the treatment options have not changed in the last 3 decades. Our goal was to improve the knowledge on immune pathways that could be druggable targets to enhance the immune response of patients. Our strategy was to revisit the differences based on a molecular classification on High and Low Steroid Phenotypes (HSP and LSP respectively) proposed by Zheng et al. (2016), using The Cancer Genome Atlas (TCGA) ACC database and public data sets published by reference studies of Thorsson et al., (2018) and Sturm et al. (2019) for TCGA samples. This script reproduces all results published in Muzzi et al. (2021) and serves as complementary material.
 In Preprocessing.Rmd file, we show how to obtain and preprocess the data sets used in the study, at the end of the section the data sets are saved as RData and can be imported for further analysis. Here we use the preprocessed data and show the steps for data analysis and how to obtain the results and plots shown in Muzzi et al. (2021). 
 
-Package Installation
+Package installation
 ----
 ```r 
 # Libraries used
@@ -41,7 +41,7 @@ library(RedeR)
 library(igraph)
 ```
 
-Import Preprocessed data
+Loading preprocessed data
 ----
 
 ```r
@@ -64,7 +64,7 @@ clinic.dat <- data.frame(colData(tcgaACC))
 
 ```
 
-Reproduction of Figure 1 at Muzzi et al. (2021)
+Code snippet for reproducing Figure 1
 ----
 
 ```r 
@@ -145,7 +145,7 @@ g1<- ggplot(dat_imun,
 plot_grid(g,g1,labels="AUTO", ncol=1)
 ```
 
-Reproduction of Figure 2 at Muzzi et al. (2021)
+Code snippet for reproducing Figure 2
 ----
 ```r
 # Boxplot - pan-cancer comparison for Immune Infiltrate
@@ -234,7 +234,7 @@ for(i in 3:6){
  plot_grid(g1,g2,g3,g4, ncol = 1, labels = "AUTO", label_size = 11)
 ```
 
-Reproduction of Figure 3 at Muzzi et al. (2021)
+Code snippet for reproducing Figure 3
 ----
 ```r
 
@@ -384,7 +384,7 @@ g<-ggplot(data = res.df[complete.cases(res.df$padj),],
 g
 ```
 
-Reproduction of Figure 4 at Muzzi et al. (2021)
+Code snippet for reproducing Figure 4
 ----
 
 ```r 
@@ -606,7 +606,7 @@ g1 # Ref fig 4A Muzzi et al. 2021
 g2 # Ref fig 4B Muzzi et al. 2021
 ```
 
-Reproduction of Figure 5 at Muzzi et al. (2021)
+Code snippet for reproducing Figure 5
 ----
 ```r
 # Preparing data.frame for heatmap and boxplot - Cibersort (Thorsson et al) & xCell (Sturm et al)
@@ -916,7 +916,7 @@ g1<- ggplot(dat_bp,
 plot_grid(g,g1,ncol = 2,rel_widths = c(3,1), labels="AUTO")
 ```
 
-Reproduction of Figure 6 at Muzzi et al. (2021)
+Code snippet for reproducing Figure 6
 ----
 ```r
 ##### Preparing matrix of immmune modulators (IM) gene expression for Heatmap
@@ -1267,7 +1267,7 @@ fisher.test(annot_hm$Steroid, annot_hm$C1A.C1B) # p-value = 1.874e-11
 fisher.test(annot_hm$Steroid, annot_hm$CIMP) # p-value = 1.396e-06
 ```
 
-Reproduction of Figure 7A at Muzzi et al. (2021)
+Code snippet for reproducing Figure 7A
 ----
 ```r
 ##### iAtlas (Thorsson et al 2018) Extracellular communication network reconstruction
@@ -1376,7 +1376,7 @@ redeC4 <- att.sete(g=redeC4,
 #RedeR::exitd(rdp)
 ```
 
-Reproduction of Figure 7B at Muzzi et al. (2021)
+Code snippet for reproducing Figure 7B
 ----
 ```r 
 
@@ -1462,7 +1462,7 @@ g<- grid.grabExpr(
 plot_grid(g)
 ```
 
-Reproduction of Figure 8 at Muzzi et al. (2021)
+Code snippet for reproducing Figure 8
 ----
 ```r
 # Scatter plot CD8B X PDL1 and PDL2
@@ -1603,7 +1603,7 @@ row3<- plot_grid(leg,leg1, ncol=2, align = "hv", rel_widths = c(2,2))
 plot_grid(row0,row1, row2, row3, ncol=1, rel_heights = c(.5,2,2,.7) , align = "hv")
 ```
 
-Reproduction of Figure 9 at Muzzi et al. (2021)
+Code snippet for reproducing Figure 9
 ----
 ```r
 #### Survival analysis
@@ -1779,7 +1779,7 @@ row3<- plot_grid(g1$plot,
 plot_grid(row1,row2,row3,ncol=1, labels = "AUTO")
 ```
 
-Reproduction of Table 1 at Muzzi et al. (2021)
+Code snippet for reproducing Table 1
 ----
 ```r
 # Clinical table
@@ -1935,6 +1935,6 @@ plot_grid(tab)
 
 R session
 ----
-```r
+```{r session-info}
 sessionInfo()
 ```

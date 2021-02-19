@@ -1,6 +1,6 @@
 ---
 title: "**Script for data sets import and pre-process**"
-author: "João C. D. Muzzi, Juliana F. de Moura, Mauro A. A. Castro, Bonald C. Figueiredo"
+author: "João C. D. Muzzi, Juliana F. de Moura, Mauro A. A. Castro, Jessica M. Magno, Milena A. Cardoso, Bonald C. Figueiredo."
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: 
   html_document:
