@@ -1,0 +1,36 @@
+Node,Friendly Name,Type,Group,Abundance
+BTLA,BTLA,Ligand,C3,0.609
+CD276,B7-H3,Ligand,C3,0.826
+CD276,B7-H3,Ligand,C4,0.857
+CD79A,CD79A,Receptor,C3,0.565
+Dendritic_cells,Dendritic cells,Cell,C3,0.87
+Dendritic_cells,Dendritic cells,Cell,C4,0.918
+FLT1,VEGFR1,Receptor,C3,1
+FLT1,VEGFR1,Receptor,C4,0.959
+GPC1,GPC1,Receptor,C4,0.98
+HLA-A,HLA-A,Ligand,C3,0.826
+HLA-A,HLA-A,Ligand,C4,0.531
+HLA-B,HLA-B,Ligand,C3,0.522
+HLA-C,HLA-C,Ligand,C3,0.522
+ICAM3,ICAM3,Ligand,C3,0.652
+IL10,IL10,Ligand,C3,0.522
+IL10RA,IL10RA,Receptor,C3,0.522
+ITGB2,ITGB2,Receptor,C3,0.522
+KIR2DL1,KIR2DL1,Receptor,C3,0.696
+KIR3DL1,KIR3DL1,Receptor,C4,0.531
+KIR3DL2,KIR2DL2,Receptor,C3,0.609
+KLRD1,KLRD1,Receptor,C3,0.739
+LILRB1,LILRB1,Receptor,C3,0.609
+Macrophage,Macrophage,Cell,C3,0.609
+Mast_cells,Mast cells,Cell,C3,0.696
+NK_cells,NK cells,Cell,C4,0.878
+PDCD1,PD-1,Receptor,C3,0.565
+PDCD1LG2,PD-L2,Ligand,C3,0.522
+T_cells_CD4,T cells CD4,Cell,C3,0.826
+T_cells_CD8,T cells CD8,Cell,C3,0.826
+TLR4,TLR4,Receptor,C3,0.739
+TNFRSF14,HVEM,Receptor,C3,0.696
+TNFSF4,OX40L,Ligand,C3,0.783
+TNFSF9,4-1BB-L,Ligand,C4,0.959
+VEGFA,VEGFA,Ligand,C4,0.959
+VEGFB,VEGFB,Ligand,C3,0.783
