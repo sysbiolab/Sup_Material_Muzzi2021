@@ -200,8 +200,9 @@ tab <- cbind(clinic.dat[order(clinic.dat$patient), "barcode", drop=F],
              thorsson_ACC[,59:64],
              sturm_ACC[,c("patient_XCELL", cols)])
 tab <- tab[colnames(tcgaACC),]
+colData(tcgaACC)$age_at_diagnosis <- colData(tcgaACC)$age_at_diagnosis/365
 colData(tcgaACC) <- 
-  cbind(colData(tcgaACC)[,c("patient","age_at_index","gender", "tumor_stage",
+  cbind(colData(tcgaACC)[,c("patient","age_at_diagnosis","gender", "tumor_stage",
                             "vital_status","Steroid", "Proliferation_mRNA",
                             "paper_C1A.C1B", "paper_MethyLevel", "paper_Histology")],
         tab)
@@ -274,7 +275,7 @@ gdc <- c("TCGA", nodes_genes$Node)
 
 # Exporting gene names as tsv file for filtering whole gene exp matrix
 write.table(gdc,
-            file="/home/muzzi/gdc_genes_filt_symbol.tsv",
+            file="gdc_genes_filt_symbol.tsv",
             quote = FALSE, 
             row.names = F,
             col.names = F) 
@@ -284,8 +285,7 @@ write.table(gdc,
 ```{bash heatmap-network-pancan-exp-filtering}
 # Download TCGA Pan cancer, batch corrected and normalized gene expression
 # from Hoadley et al. (2018) supplemental data
-wget https://api.gdc.cancer.gov/data/9a4679c3-855d-4055-8be9-3577ce10f66e \ 
--o "RNASeqV2-geneExp-xena.tsv"
+wget 'https://api.gdc.cancer.gov/data/9a4679c3-855d-4055-8be9-3577ce10f66e' -O "RNASeqV2-geneExp-xena.tsv"
 # Filtering for 25 nodes gene expression in pan-cancer gene expression matrix
 grep -Fwf gdc_genes_filt_symbol.tsv 'RNASeqV2-geneExp-xena.tsv' > 'pancan-rna.tsv'
 ```
@@ -299,10 +299,15 @@ pancan <- read.table(file = "pancan-rna.tsv")
 pancan <- data.frame(t(pancan))
 names(pancan) <- pancan[1,]
 pancan <- pancan[-1,]
+
+## Changing colnames to remove NCBI gene locus after gene name
+colnames(pancan) <- c("sample",gdc[-1])
+pancan$sample <- substr(pancan$sample, 1, nchar(pancan$sample)-13)
+
 ## Filtering for Primary Tumor samples
 pancan <- pancan[grepl("-01$",pancan$sample),]
 ## Removing duplicated barcodes
-pancan <- distinct(pancan, sample, .keep_all = T) #removed 3 duplicated barcodes
+pancan <- distinct(pancan, sample, .keep_all = T) #removed 4 duplicated barcodes
 ## Removing 3 last numbers from Barcodes to merge with Thorsson et al (2018) data set
 pancan$sample <- substr(pancan$sample, 1, nchar(pancan$sample)-3)
 pancan <- pancan[pancan$sample %in% thorsson_pan$TCGA.Participant.Barcode,] #9361 rows
