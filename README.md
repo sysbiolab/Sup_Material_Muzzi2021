@@ -244,25 +244,18 @@ dds <- DESeq(dds)
 
 # Changing rownames for symbols to plot
 ## Finding duplicated Symbols
-(dds@rowRanges@elementMetadata@listData[["external_gene_name"]]
+dup <- (dds@rowRanges@elementMetadata@listData[["external_gene_name"]]
   [duplicated(dds@rowRanges@elementMetadata@listData[["external_gene_name"]])])
-#[1] "PINX1" "TMSB15B" "ATF7" "MATR3" 
+#[1] "PINX1" "TMSB15B" "MATR3" 
 ## Changing duplicated Symbols, adding _ after duplicated gene name
 dds@rowRanges@elementMetadata@listData[["external_gene_name"]][
-  match(c("PINX1", "TMSB15B", "ATF7", "MATR3"),
+  match(dup,
          dds@rowRanges@elementMetadata@listData[["external_gene_name"]])] <-
-  c("PINX1_", "TMSB15B_", "ATF7_", "MATR3_")
+  paste0(dup,"_")
 anyDuplicated(dds@rowRanges@elementMetadata@listData[["external_gene_name"]]) #0
 
 # Changing DDS gene names from Ensembl to Symbol
 rownames(dds)<-dds@rowRanges@elementMetadata@listData[["external_gene_name"]]
-
-# Changing some genes to friendly names
-rownames(dds)[match(c("CD274","PDCD1","PDCD1LG2","AC011462.1",
-                      "FLT1", "TNFRSF14", "TNFSF4", "CD276", "TNFSF9"), 
-                    rownames(dds))] <- c("PDL1","PD1","PDL2","TGFB1",
-                                         "VEGFR1", "HVEM", "OX40L", "B7-H3", "4.1BBL")
-## In 2021 new version of TCGABiolinks TGFB1 is named "AC011462.1" - ensembl ENSG00000105329.8
 
 # Presenting D.E. results
 res <- results(dds)
@@ -925,13 +918,14 @@ Code snippet for reproducing Figure 6
 
 # Ordering by names inside each category
 co_stimulator <- sort(c("CD80","CD28","ICOSLG"))
-co_inhibitor <- sort(c("PDL2","PDL1","VTCN1","SLAMF7","BTN3A2","BTN3A1","B7-H3")) #CD276 = B7-H3
-ligand <- sort(c("4.1BBL","TNF","OX40L","IL1B","CXCL9","CXCL10","CCL5","VEGFB","CX3CL1",
-                 "TGFB1","VEGFA","CD70","CD40LG","IL10", "IFNG", "IL1A","IL12A", "IFNA2",
-                 "IFNA1","IL4","IL2","IL13", "CSF2")) #TNFSF4=OX40L "TNFSF9=4.1BBL
-receptor <- sort(c("TNFRSF18","TIGIT","PD1","CTLA4","IL2RA","TNFRSF4","CD27",
+co_inhibitor <- sort(c("PDCD1LG2","CD274","VTCN1","SLAMF7","BTN3A2","BTN3A1","CD276")) #CD276 = CD276
+ligand <- sort(c("TNFSF9","TNF","TNFSF4","IL1B","CXCL9","CXCL10","CCL5","VEGFB","CX3CL1",
+                 "TGFB1",
+                 "VEGFA","CD70","CD40LG","IL10", "IFNG", "IL1A","IL12A", "IFNA2",
+                 "IFNA1","IL4","IL2","IL13", "CSF2")) #TNFSF4=TNFSF4 "TNFSF9=TNFSF9
+receptor <- sort(c("TNFRSF18","TIGIT","PDCD1","CTLA4","IL2RA","TNFRSF4","CD27",
                    "LAG3","TNFRSF9","ICOS","BTLA","KIR2DL3","KIR2DL1",
-                   "HVEM","EDNRB","CD40","ADORA2A","TLR4","HAVCR2")) # TNFRSF14 = HVEM
+                   "TNFRSF14","EDNRB","CD40","ADORA2A","TLR4","HAVCR2")) # TNFRSF14 = TNFRSF14
 cell_adhesion <- sort(c("ITGB2","ICAM1","SELP"))
 antigen_presentation <-
   sort(c("HLA-DRB5","HLA-DQA1","HLA-DQB1","MICA","MICB","HLA-DQA2","HLA-DQB2","HLA-B",
@@ -942,6 +936,12 @@ other <- sort(c("IDO1","GZMA","PRF1","ARG1","HMGB1","ENTPD1"))
 dat_imun <-
   gen_expt[,c(co_stimulator,co_inhibitor,ligand,receptor,cell_adhesion,antigen_presentation,other)]
 cols <- colnames(dat_imun)
+## Adding friendly names to genes
+cols[match(c("CD274","PDCD1","PDCD1LG2", "TNFRSF14", 
+                              "TNFSF4", "CD276", "TNFSF9"),
+                      cols)] <- c("CD274 (PDL1)","PDCD1 (PD1)",
+                                  "PDCD1LG2 (PDL2)", "TNFRSF14 (HVEM)", 
+                                  "TNFSF4 (OX40L)", "CD276 (B7-H3)", "TNFSF9 (4-1BB-L)")
 ## Ordering by annot_hm clustered patients
 dat_imun <- dat_imun[rownames(annot_hm),]
 
@@ -1389,11 +1389,12 @@ gen_exp_pan <- Pancan_data[["gen_exp_pan"]]
 gen_exp_pan[,2:26] <- apply(gen_exp_pan[,2:26],
                             2,
                             rank) # 9361 patients
-## Changing to friendly gene names
+## Adding friendly gene names
 names(gen_exp_pan)[
-  match(c("PDCD1","PDCD1LG2", "FLT1", "TNFRSF14", "TNFSF4", "CD276", "FLT1", "TNFSF9"), 
+  match(c("PDCD1","PDCD1LG2", "TNFRSF14", "TNFSF4", "CD276", "FLT1", "TNFSF9"), 
         names(gen_exp_pan))] <- 
-        c("PD1","PDL2","VEGFR1", "HVEM", "OX40L", "B7-H3", "VEGFR1", "4.1BBL") 
+        c("PDCD1 (PD-1)","PDCD1LG2 (PD-L2)", "TNFRSF14 (HVEM)", "TNFSF4 (OX40L)",
+          "CD276 (B7-H3)", "FLT1 (VEGFR1)", "TNFSF9 (4-1BB-L)") 
 ## Retrieving total number of patients for tertiles calculus
 m <- nrow(gen_exp_pan) 
 ## Filtering for 78 ACC patients by barcodes and ordering samples as in clinic.dat
@@ -1465,9 +1466,9 @@ plot_grid(g)
 Code snippet for reproducing Figure 8
 ----
 ```r
-# Scatter plot CD8B X PDL1 and PDL2
+# Scatter plot CD8B X CD274 and PDCD1LG2
 ## Preparing data.frame with expression values, steroid phenotype, vital status and cortisol
-dat_imun <- gen_expt[,c("CD8B", "PDL1", "PDL2")]
+dat_imun <- gen_expt[,c("CD8B", "CD274", "PDCD1LG2")]
 dat_imun$Steroid <- as.factor(annot_hm[rownames(dat_imun),"Steroid"])
 dat_imun$Vital_Status <- as.factor(annot_hm[rownames(dat_imun),"Vital.Status"])
 dat_imun$Cortisol <- annot_hm[rownames(dat_imun),"Cortisol"]
@@ -1500,32 +1501,32 @@ xdensity <-
         axis.title.x = element_blank())+
   annotate("text",label=p, x=7.5, y=1, size=2.5)+
   scale_x_continuous(limits = c(5,9.5))
-## Scatter plot for Cd8B X PDL1 expression
+## Scatter plot for Cd8B X CD274 expression
 scatterPlot2 <- 
-  ggplot(dat_imun, aes(x=CD8B, y=PDL1 ))+
+  ggplot(dat_imun, aes(x=CD8B, y=CD274 ))+
   geom_point(size=1.5, aes(color=Steroid, shape=Vital_Status))+
   theme(legend.position = "none",
         text= element_text(size=8),
         plot.margin = margin(0.1,0.1,0.1,0.1,unit="pt"))+
-  labs(y = "log2 PDL1 gene expression", x = element_blank())+
+  labs(y = "log2 CD274 gene expression", x = element_blank())+
   geom_smooth(method="lm", formula=y~x, color="black")+
   coord_fixed(ratio = 1, expand = F, clip = "on")+
   stat_cor(method="pearson", size = 2.5, label.x = 5.5, label.y = 9.5)+
   scale_x_continuous(limits = c(5,9.5))+
   scale_y_continuous(limits = c(5,10))+
-  geom_rug(aes(color=Cortisol, y=PDL1, x=NULL), show.legend = F)+
+  geom_rug(aes(color=Cortisol, y=CD274, x=NULL), show.legend = F)+
   scale_color_manual(
       values=c("Steroid_High"="#F8766D",
                "Steroid_Low"="#00BFC4",
                "Cortisol"="navyblue",
                "No"="grey"),
       na.value="white")
-## Retrieve adjusted p value (Wald's test) from D.E. results for PDL1
-p <- format(res[rownames(res)=="PDL1",]$padj, digits=2, scientific = T)
+## Retrieve adjusted p value (Wald's test) from D.E. results for CD274
+p <- format(res[rownames(res)=="CD274",]$padj, digits=2, scientific = T)
 p<- paste0("p = ",p)
-## Density plot for PDL1 expression
+## Density plot for CD274 expression
 ydensity2 <-
-  ggplot(dat_imun, aes(PDL1,fill=Steroid)) +
+  ggplot(dat_imun, aes(CD274,fill=Steroid)) +
   geom_density(alpha=.5)+
   theme(legend.position ="none", 
         text = element_text(size=8), 
@@ -1533,14 +1534,14 @@ ydensity2 <-
   coord_flip(xlim=c(5,10),ylim=c(0,1.5), expand = F)+
   annotate("text",label=p, x=9.5, y=0.75, colour ="black", size=2.5)
 
-## Scatter plot for Cd8B X PDL2 expression
+## Scatter plot for Cd8B X PDCD1LG2 expression
 scatterPlot3 <- 
-  ggplot(dat_imun,aes(x=CD8B, y=PDL2))+
+  ggplot(dat_imun,aes(x=CD8B, y=PDCD1LG2))+
   geom_point(size=1.5, aes(color=Steroid, shape=Vital_Status))+
   theme(legend.position = "none",
         text= element_text(size=8), 
         plot.margin = margin(0.1,0,0.1,0,unit="pt"))+
-  labs(x = "log2 CD8B gene expression", y= "log2 PDL2 gene expression")+
+  labs(x = "log2 CD8B gene expression", y= "log2 PDCD1LG2 gene expression")+
   geom_smooth(method="lm", formula=y~x, color="black")+
   stat_cor(method="pearson", size = 2.5, label.x = 5.5, label.y = 9.5)+
   scale_color_hue(labels=c("Steroid High (n=47)","Steroid Low (n=31)"))+
@@ -1581,12 +1582,12 @@ scatterPlot3 <-
              "Cortisol"="navyblue",
              "No"="grey"),
     na.value="white")
-## Retrieve adjusted p value (Wald's test) from D.E. results for PDL2
-p <- format(res[rownames(res)=="PDL2",]$padj, digits=2, scientific = T)
+## Retrieve adjusted p value (Wald's test) from D.E. results for PDCD1LG2
+p <- format(res[rownames(res)=="PDCD1LG2",]$padj, digits=2, scientific = T)
 p<- paste0("p = ",p)
-## Density plot for PDL2 expression
+## Density plot for PDCD1LG2 expression
 ydensity3 <- 
-  ggplot(dat_imun, aes(PDL2,fill=Steroid)) +
+  ggplot(dat_imun, aes(PDCD1LG2,fill=Steroid)) +
   geom_density(alpha=.5)+
   theme(legend.position="none",
         text= element_text(size=8), 
@@ -1784,8 +1785,8 @@ Code snippet for reproducing Table 1
 ```r
 # Clinical table
 tab<- clinic.dat[order(clinic.dat$patient),
-                 c("patient", "age_at_index", "gender", "tumor_stage", "vital_status", 
-                   "Steroid","Proliferation_mRNA","Cortisol", "Other.Hormones", "Immune.Subtype")]
+                 c("patient", "age_at_diagnosis", "gender", "tumor_stage", "vital_status",
+                 "Steroid","Proliferation_mRNA","Cortisol", "Other.Hormones", "Immune.Subtype")]
 colnames(tab)[2] <- "Age"
 ## Group by Steroid and Vital Status and count patients for each category
 tab <- tab %>% group_by(Steroid,vital_status)
